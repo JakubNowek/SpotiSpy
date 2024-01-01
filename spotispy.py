@@ -20,24 +20,21 @@ if token:
     sp = spotipy.Spotify(auth=token)
 
     art = []
-    number = 0
     limit = 50
     last_artist_id = None
+    number_of_items = 0
     next_item= 1
     while next_item is not None:
         artists = sp.current_user_followed_artists(limit=limit, after=last_artist_id)
         artists_list = artists['artists']['items']
-        next_item = next_item = artists['artists']['next']
-
+        next_item = artists['artists']['next']
 
         for artist in artists_list:
             #print(artist['name'])
-            position = list(artists_list).index(artist)
-            art.append([artist['name'], artist['id'], position + limit*number])
+            artist_index_in_list = list(artists_list).index(artist)
+            art.append([artist['name'], artist['id'], artist_index_in_list + limit * number_of_items])
             last_artist_id = artist['id']
-        #print(sp.current_user_top_tracks())
-        number+=1
-
+        number_of_items+= 1
 
     for artist in art:
         print(artist)
