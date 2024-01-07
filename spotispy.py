@@ -12,24 +12,46 @@ def get_followed_artist_list(sp, limit=50):
         artist_list.extend(results['items'])
 
     # for artist in artist_list:
-    #     print(artist['name'])
+    #     print(artist['name'], artist['id'])
     return artist_list
 
 
-def get_artist_albums(sp, artist_id, album_type=('album', 'single')):
+def get_artist_albums(sp, artist_id, album_type=('album', 'single'), limit=50):
     albums = []
     for type in album_type:
-        results = sp.artist_albums(artist_id, album_type=type)
-        print(results['total'])
+        results = sp.artist_albums(artist_id, album_type=type, limit=limit)
+        #print(results['total'])
         albums.extend(results['items'])
         while results['next']:
             results = sp.next(results)
             albums.extend(results['items'])
 
-    for album in albums:
-        print(album['name'])
+    # for album in albums:
+    #     print(album['name'], album['id'])
     return albums
 
+
+def get_album_tracks(sp, album_id, limit=50):
+    tracks = []
+    results = sp.album_tracks(album_id=album_id, limit=limit)
+    #print(results['total'])
+    tracks.extend(results['items'])
+    while results['next']:
+        results = sp.next(results)
+        tracks.extend(results['items'])
+    #
+    # for track in tracks:
+    #     print('     ', track['name'], track['id'])
+    return tracks
+
+def get_artists_discography(sp, artist_id):
+    artists_tracks = []
+    artist_albums = get_artist_albums(sp, artist_id=artist_id)
+    for album in artist_albums:
+        #print(album['name'], album['total_tracks'])
+        artists_tracks.extend(get_album_tracks(sp, album['id']))
+    # print(len(artists_tracks))
+    return artists_tracks
 
 # setting the scopes to authorize
 scope = 'user-follow-read user-library-read user-top-read'
@@ -104,15 +126,21 @@ auth_manager = SpotifyOAuth(username=username,
 
 sp = spotipy.Spotify(auth_manager=auth_manager)
 
-followed_artist_list = get_followed_artist_list(sp)
-#artist_albums = get_artist_albums(sp, artist_id='7aA592KWirLsnfb5ulGWvU')
+#followed_artist_list = get_followed_artist_list(sp)
 
-#artist_albums = sp.artist_albums(artist_id='7aA592KWirLsnfb5ulGWvU', limit=50)
-# for artist in followed_artist_list:
-#     print(artist)
 
-# for album in artist_albums['items']:
-#     print(album)
+# artist_albums = get_artist_albums(sp, artist_id='0hCNtLu0JehylgoiP8L4Gh')
+
+
+# album_tracks = get_album_tracks(sp,'4Rh57STD18rbjXbBrx2X65')
+
+
+artist_discography = get_artists_discography(sp, artist_id='0hCNtLu0JehylgoiP8L4Gh')
+for track in artist_discography:
+    print(track['name'], track['id'])
+
+
+
 # artist_tracks = []
 # for album in artist_albums['items']:
 #     album_tracks = sp.album_tracks(album['id'], limit=50)
