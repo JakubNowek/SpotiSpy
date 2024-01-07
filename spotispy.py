@@ -44,6 +44,7 @@ def get_album_tracks(sp, album_id, limit=50):
     #     print('     ', track['name'], track['id'])
     return tracks
 
+
 def get_artists_discography(sp, artist_id):
     artists_tracks = []
     artist_albums = get_artist_albums(sp, artist_id=artist_id)
@@ -53,13 +54,41 @@ def get_artists_discography(sp, artist_id):
     # print(len(artists_tracks))
     return artists_tracks
 
+
+def artist_tracks_to_add(sp, artist_id):
+    list_of_tracks_id_to_add = []
+    artist_discography = get_artists_discography(sp, artist_id=artist_id)
+
+    for track in artist_discography:
+        list_of_tracks_id_to_add.append(track['id'])
+
+    return list_of_tracks_id_to_add
+
+
+def tracks_id_to_add_creator(sp, artists_id_list):
+    list_of_tracks_id_to_add = []
+    for artist_id in artists_id_list:
+        list_of_tracks_id_to_add.extend(artist_tracks_to_add(sp, artist_id))
+
+    return list_of_tracks_id_to_add
+
+
+def add_tracks_to_playlist(sp, tracks_id_list, playlist_id):
+    sp.playlist_add_items(playlist_id=playlist_id, items=tracks_id_list)
+
 # setting the scopes to authorize
-scope = 'user-follow-read user-library-read user-top-read'
+scope = 'user-follow-read \
+        user-library-read \
+        user-top-read \
+        playlist-modify-public \
+        playlist-modify-private \
+        user-read-private \
+        user-read-email'
 
 # client credentials
 cid = '69cb1a2b53aa409ebbf168afe0bd4b02'
 secret = '84a4ef954c3b4327af66350a76496d04'
-username = '69cb1a2b53aa409ebbf168afe0bd4b02'
+username = 'yt2fz80w9y0gxc49640wbxeub'
 artist_to_add_list = [['Chef Lay', '6xQoqRtTEYNZNF5gUMG3iu', 590],
 ['CHOPPA TEE', '12iGnI7m6kxA8LpEQ1xdiJ', 91],
 ['Ash Bash Tha Rapper', '4GHSsO2bndtYIfy8js9hUN', 370],
@@ -135,12 +164,17 @@ sp = spotipy.Spotify(auth_manager=auth_manager)
 # album_tracks = get_album_tracks(sp,'4Rh57STD18rbjXbBrx2X65')
 
 
-artist_discography = get_artists_discography(sp, artist_id='0hCNtLu0JehylgoiP8L4Gh')
-for track in artist_discography:
-    print(track['name'], track['id'])
+# artist_discography = get_artists_discography(sp, artist_id='6vEgaRuQU3vD4ae9SrL7tR')
 
 
+###### sp.playlist_add_items(playlist_id='6UDrcXzV1goOZldp8nOZum', items=to_add)
+artists_id_list = ['6vEgaRuQU3vD4ae9SrL7tR','2BxIP27i38uM4Ds5Pbdk3h']
 
+add_tracks_to_playlist(sp, tracks_id_list=tracks_id_to_add_creator(sp, artists_id_list=artists_id_list), playlist_id='6UDrcXzV1goOZldp8nOZum',)
+
+
+# print(sp.current_user())  # print userinfo
+# sp.user_playlist_create(username, 'TestSpotispy', public=True, collaborative=False, description="Test playlist for SpotiSpy")
 # artist_tracks = []
 # for album in artist_albums['items']:
 #     album_tracks = sp.album_tracks(album['id'], limit=50)
