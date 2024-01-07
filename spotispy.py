@@ -3,6 +3,27 @@ from spotipy.oauth2 import SpotifyOAuth
 
 import pandas as pd
 
+
+def get_followed_artist_list(sp):
+    # get all followed artists list
+    artist_name_id_index = []
+    limit = 50
+    last_artist_id = None
+    number_of_items = 0
+    next_item = 1
+    while next_item is not None:
+        artists = sp.current_user_followed_artists(limit=limit, after=last_artist_id)
+        artists_list = artists['artists']['items']
+        next_item = artists['artists']['next']
+
+        for artist in artists_list:
+            # print(artist['name'])
+            artist_index_in_list = list(artists_list).index(artist)
+            artist_name_id_index.append([artist['name'], artist['id'], artist_index_in_list + limit * number_of_items])
+            last_artist_id = artist['id']
+        number_of_items += 1
+    return artist_name_id_index
+
 # setting the scopes to authorize
 scope = 'user-follow-read user-library-read user-top-read'
 
@@ -73,26 +94,9 @@ auth_manager = SpotifyOAuth(username=username,
                             client_id=cid,
                             client_secret=secret,
                             redirect_uri='http://localhost:3000')
-"    spotipy.Spotify(auth_manager=auth_manager)"
 
 sp = spotipy.Spotify(auth_manager=auth_manager)
 
-art = []
-limit = 50
-last_artist_id = None
-number_of_items = 0
-next_item = 1
-while next_item is not None:
-    artists = sp.current_user_followed_artists(limit=limit, after=last_artist_id)
-    artists_list = artists['artists']['items']
-    next_item = artists['artists']['next']
-
-    for artist in artists_list:
-        #print(artist['name'])
-        artist_index_in_list = list(artists_list).index(artist)
-        art.append([artist['name'], artist['id'], artist_index_in_list + limit * number_of_items])
-        last_artist_id = artist['id']
-    number_of_items += 1
-
-for artist in art:
+followed_artist_list = get_followed_artist_list(sp)
+for artist in followed_artist_list:
     print(artist)
