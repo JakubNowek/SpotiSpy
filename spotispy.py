@@ -1,33 +1,40 @@
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
-
 import pandas as pd
 
 
-def get_followed_artist_list(sp):
-    # get all followed artists list
-    artist_name_id_index = []
-    limit = 50
-    last_artist_id = None
-    number_of_items = 0
-    next_item = 1
-    while next_item is not None:
-        artists = sp.current_user_followed_artists(limit=limit, after=last_artist_id)
-        artists_list = artists['artists']['items']
-        next_item = artists['artists']['next']
+def get_followed_artist_list(sp, limit=50):
+    artist_list = []
+    results = sp.current_user_followed_artists(limit=limit)['artists']
+    artist_list.extend(results['items'])
+    while results['next']:
+        results = sp.next(results)['artists']
+        artist_list.extend(results['items'])
 
-        for artist in artists_list:
-            # print(artist['name'])
-            artist_index_in_list = list(artists_list).index(artist)
-            artist_name_id_index.append([artist['name'], artist['id'], artist_index_in_list + limit * number_of_items])
-            last_artist_id = artist['id']
-        number_of_items += 1
-    return artist_name_id_index
+    # for artist in artist_list:
+    #     print(artist['name'])
+    return artist_list
+
+
+def get_artist_albums(sp, artist_id, album_type=('album', 'single')):
+    albums = []
+    for type in album_type:
+        results = sp.artist_albums(artist_id, album_type=type)
+        print(results['total'])
+        albums.extend(results['items'])
+        while results['next']:
+            results = sp.next(results)
+            albums.extend(results['items'])
+
+    for album in albums:
+        print(album['name'])
+    return albums
+
 
 # setting the scopes to authorize
 scope = 'user-follow-read user-library-read user-top-read'
 
-#client credentials
+# client credentials
 cid = '69cb1a2b53aa409ebbf168afe0bd4b02'
 secret = '84a4ef954c3b4327af66350a76496d04'
 username = '69cb1a2b53aa409ebbf168afe0bd4b02'
@@ -98,5 +105,21 @@ auth_manager = SpotifyOAuth(username=username,
 sp = spotipy.Spotify(auth_manager=auth_manager)
 
 followed_artist_list = get_followed_artist_list(sp)
-for artist in followed_artist_list:
-    print(artist)
+#artist_albums = get_artist_albums(sp, artist_id='7aA592KWirLsnfb5ulGWvU')
+
+#artist_albums = sp.artist_albums(artist_id='7aA592KWirLsnfb5ulGWvU', limit=50)
+# for artist in followed_artist_list:
+#     print(artist)
+
+# for album in artist_albums['items']:
+#     print(album)
+# artist_tracks = []
+# for album in artist_albums['items']:
+#     album_tracks = sp.album_tracks(album['id'], limit=50)
+#     artist_tracks.append(album_tracks)
+#     print(album['name'])
+#     print(len(artist_tracks))
+#print('KONIEC:', artist_tracks)
+
+# for track in artist_tracks:
+#     print(track['items'][0]['name'])
