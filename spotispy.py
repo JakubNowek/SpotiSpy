@@ -1,9 +1,11 @@
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 import pandas as pd
+import json
+import jsondiff
 
 
-def get_followed_artist_list(sp, limit=50):
+def get_followed_artist_list(sp, limit=50) -> dict:
     artist_list = []
     results = sp.current_user_followed_artists(limit=limit)['artists']
     artist_list.extend(results['items'])
@@ -16,7 +18,7 @@ def get_followed_artist_list(sp, limit=50):
     return artist_list
 
 
-def get_artist_albums(sp, artist_id, album_type=('album', 'single'), limit=50):
+def get_artist_albums(sp, artist_id, album_type=('album', 'single'), limit=50) -> dict:
     albums = []
     for type in album_type:
         results = sp.artist_albums(artist_id, album_type=type, limit=limit)
@@ -31,7 +33,7 @@ def get_artist_albums(sp, artist_id, album_type=('album', 'single'), limit=50):
     return albums
 
 
-def get_album_tracks(sp, album_id, limit=50):
+def get_album_tracks(sp, album_id, limit=50) -> dict:
     tracks = []
     results = sp.album_tracks(album_id=album_id, limit=limit)
     #print(results['total'])
@@ -45,7 +47,7 @@ def get_album_tracks(sp, album_id, limit=50):
     return tracks
 
 
-def get_artists_discography(sp, artist_id):
+def get_artists_discography(sp, artist_id) -> dict:
     artists_tracks = []
     artist_albums = get_artist_albums(sp, artist_id=artist_id)
     for album in artist_albums:
@@ -55,7 +57,7 @@ def get_artists_discography(sp, artist_id):
     return artists_tracks
 
 
-def artist_tracks_to_add(sp, artist_id):
+def artist_tracks_to_add(sp, artist_id) -> list:
     list_of_tracks_id_to_add = []
     artist_discography = get_artists_discography(sp, artist_id=artist_id)
 
@@ -65,16 +67,31 @@ def artist_tracks_to_add(sp, artist_id):
     return list_of_tracks_id_to_add
 
 
-def tracks_id_to_add_creator(sp, artists_id_list):
-    list_of_tracks_id_to_add = []
-    for artist_id in artists_id_list:
-        list_of_tracks_id_to_add.extend(artist_tracks_to_add(sp, artist_id))
+def export_dict_to_json_format(spotify_json_object, list_name: str, *args: tuple[str, str]):
+    main_json = {list_name: []}
+    dict_as_list_item = {}
+    for item in spotify_json_object:
+        for arg in args:
+            dict_as_list_item[arg[0]] = item[arg[1]]
+            # dict_as_list_item["artist_id"] = item['id']
+        main_json[list_name].append(dict_as_list_item)
+        dict_as_list_item = {}
+    print(main_json)
+    return main_json
 
-    return list_of_tracks_id_to_add
 
 
-def add_tracks_to_playlist(sp, tracks_id_list, playlist_id):
-    sp.playlist_add_items(playlist_id=playlist_id, items=tracks_id_list)
+# def tracks_id_to_add_creator(sp, artists_id_list):
+#     list_of_tracks_id_to_add = []
+#     for artist_id in artists_id_list:
+#         list_of_tracks_id_to_add.extend(artist_tracks_to_add(sp, artist_id))
+#
+#     return list_of_tracks_id_to_add
+
+
+# ta funkcja jest w sumie na razie bez sensu bo ma tyle argumentów co wywołanie i tyle
+# def add_tracks_to_playlist(sp, tracks_id_list, playlist_id):
+#     sp.playlist_add_items(playlist_id=playlist_id, items=tracks_id_list)
 
 # setting the scopes to authorize
 scope = 'user-follow-read \
@@ -147,6 +164,7 @@ artist_to_add_list = [['Chef Lay', '6xQoqRtTEYNZNF5gUMG3iu', 590],
 ['Peaches Adaba', '1AVlRnmtTppAMrm96iEfJu', 99],
 ['Bunny Liiu', '6vEgaRuQU3vD4ae9SrL7tR', 585]]
 
+target_playlist_id = '6UDrcXzV1goOZldp8nOZum'
 auth_manager = SpotifyOAuth(username=username,
                             scope=scope,
                             client_id=cid,
@@ -155,9 +173,34 @@ auth_manager = SpotifyOAuth(username=username,
 
 sp = spotipy.Spotify(auth_manager=auth_manager)
 
-#followed_artist_list = get_followed_artist_list(sp)
 
+followed_artist_list = get_followed_artist_list(sp)
 
+json_to_export = export_dict_to_json_format(followed_artist_list, "artists",
+                                            ("artist_name", "name"), ("artist_id", "id"))
+
+# Serializing json
+json_object = json.dumps(json_to_export, indent=4)
+
+# Writing to sample.json
+with open("current_list_of_artists.json", "w") as outfile:
+    outfile.write(json_object)
+
+# artist_database = {"artists": []}
+# artist_data = {}
+# for artist in followed_artist_list[:3]:
+#     artist_data["artist_name"] = artist['name']
+#     artist_data["artist_id"] = artist['id']
+#     artist_database["artists"].append(artist_data)
+#     artist_data = {}
+# print(artist_database)
+
+# { "artists": [
+#     {"artist_name": "Chef Lay", "artist_id": "6xQoqRtTEYNZNF5gUMG3iu", "artist_index": 590},
+#     {"artist_name": "CHOPPA TEE", "artist_id": "12iGnI7m6kxA8LpEQ1xdiJ", "artist_index": 91},
+#     {"artist_name": "Ash Bash Tha Rapper", "artist_id": "4GHSsO2bndtYIfy8js9hUN", "artist_index": 370}
+#     ]
+# }
 # artist_albums = get_artist_albums(sp, artist_id='0hCNtLu0JehylgoiP8L4Gh')
 
 
@@ -168,9 +211,12 @@ sp = spotipy.Spotify(auth_manager=auth_manager)
 
 
 ###### sp.playlist_add_items(playlist_id='6UDrcXzV1goOZldp8nOZum', items=to_add)
-artists_id_list = ['6vEgaRuQU3vD4ae9SrL7tR','2BxIP27i38uM4Ds5Pbdk3h']
+artists_id_list = ['6vEgaRuQU3vD4ae9SrL7tR', '2BxIP27i38uM4Ds5Pbdk3h']
 
-add_tracks_to_playlist(sp, tracks_id_list=tracks_id_to_add_creator(sp, artists_id_list=artists_id_list), playlist_id='6UDrcXzV1goOZldp8nOZum',)
+# for artist_id in artists_id_list:
+#     # add_tracks_to_playlist(sp, tracks_id_list=artist_tracks_to_add(sp, artist_id), playlist_id=target_playlist_id)
+#     sp.playlist_add_items(playlist_id=target_playlist_id, items=artist_tracks_to_add(sp, artist_id))
+
 
 
 # print(sp.current_user())  # print userinfo
