@@ -989,6 +989,10 @@
             "artist_id": "2njf80fnC69qA69wRFms6g"
         },
         {
+            "artist_name": "jackie chan",
+            "artist_id": "2njf80fnC49qA69wRFms6g"
+        },
+        {
             "artist_name": "Brixx",
             "artist_id": "2o35oSbdcvWAAYLxleUpXi"
         },
@@ -2663,18 +2667,6 @@
         {
             "artist_name": "Slim Poppins",
             "artist_id": "7ypD60M2OUj8LUz3KT4Pot"
-        },
-        {
-            "artist_name": "G Gotti",
-            "artist_id": "7yxzbjKUxwfu5Su3VzLX42"
-        },
-        {
-            "artist_name": "The Real Gabbana",
-            "artist_id": "7yz0vSQ4xzW5YRe5Kt7VGT"
-        },
-        {
-            "artist_name": "Knarley Jai",
-            "artist_id": "7ze7eLxpCwsBjyee6rGflT"
         }
     ]
 }

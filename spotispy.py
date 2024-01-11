@@ -2,7 +2,7 @@ import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 import pandas as pd
 import json
-import jsondiff
+from jsondiff import diff
 
 
 def get_followed_artist_list(sp, limit=50) -> dict:
@@ -67,18 +67,43 @@ def artist_tracks_to_add(sp, artist_id) -> list:
     return list_of_tracks_id_to_add
 
 
-def export_dict_to_json_format(spotify_json_object, list_name: str, *args: tuple[str, str]):
+def export_spotify_dict_to_json_format(spotify_json_object, list_name: str, list_of_key_tuples: list[tuple[str, str]]):
+    """
+    :param spotify_json_object: iterable object - spotify json object
+    :param list_name: name of the main list in json, containing dictionaries
+    :param list_of_key_tuples: list of tuples containing dictionaries' keys (key in json dict, key in spotify json)
+    """
     main_json = {list_name: []}
     dict_as_list_item = {}
     for item in spotify_json_object:
-        for arg in args:
-            dict_as_list_item[arg[0]] = item[arg[1]]
-            # dict_as_list_item["artist_id"] = item['id']
+        for key_tuple in list_of_key_tuples:
+            dict_as_list_item[key_tuple[0]] = item[key_tuple[1]]
         main_json[list_name].append(dict_as_list_item)
         dict_as_list_item = {}
-    print(main_json)
+    #print(main_json)
     return main_json
 
+
+def export_json_to_file(json_dict: dict[str:list[dict]], filename: str):
+    """
+    :param json_dict: dict containing a list of dicts
+    :param filename: name of the destination file
+    """
+
+    # Serializing json
+    json_object_to_export = json.dumps(json_dict, indent=4)
+
+    # Writing to sample.json
+    with open(filename, "w") as outfile:
+        outfile.write(json_object_to_export)
+
+
+def read_data_from_json(filename: str, list_name: str):
+    json_file = open(filename, "r")
+    json_data = json.load(json_file)
+    json_file.close()
+    list_from_main_json = json_data[list_name]
+    return list_from_main_json
 
 
 # def tracks_id_to_add_creator(sp, artists_id_list):
@@ -175,59 +200,84 @@ sp = spotipy.Spotify(auth_manager=auth_manager)
 
 
 followed_artist_list = get_followed_artist_list(sp)
+#print(followed_artist_list)
+""" Load old list of artists"""
+old_list = read_data_from_json('old_list_of_artists.json', 'artists')
 
-json_to_export = export_dict_to_json_format(followed_artist_list, "artists",
-                                            ("artist_name", "name"), ("artist_id", "id"))
+""" Generate new list of followed artists and transform it into json format"""
+json_to_export = export_spotify_dict_to_json_format(followed_artist_list, "artists",
+                                                    [("artist_name", "name"), ("artist_id", "id")])
+new_list = json_to_export["artists"]
 
-# Serializing json
-json_object = json.dumps(json_to_export, indent=4)
-
-# Writing to sample.json
-with open("current_list_of_artists.json", "w") as outfile:
-    outfile.write(json_object)
-
-# artist_database = {"artists": []}
-# artist_data = {}
-# for artist in followed_artist_list[:3]:
-#     artist_data["artist_name"] = artist['name']
-#     artist_data["artist_id"] = artist['id']
-#     artist_database["artists"].append(artist_data)
-#     artist_data = {}
-# print(artist_database)
-
-# { "artists": [
-#     {"artist_name": "Chef Lay", "artist_id": "6xQoqRtTEYNZNF5gUMG3iu", "artist_index": 590},
-#     {"artist_name": "CHOPPA TEE", "artist_id": "12iGnI7m6kxA8LpEQ1xdiJ", "artist_index": 91},
-#     {"artist_name": "Ash Bash Tha Rapper", "artist_id": "4GHSsO2bndtYIfy8js9hUN", "artist_index": 370}
-#     ]
-# }
-# artist_albums = get_artist_albums(sp, artist_id='0hCNtLu0JehylgoiP8L4Gh')
+#new_list = read_data_from_json('new_list_of_artists.json', 'artists')
 
 
-# album_tracks = get_album_tracks(sp,'4Rh57STD18rbjXbBrx2X65')
+new_added_artists_list = [x for x in new_list if x not in old_list]  # czyli wszystko co się pojawiło nowe
+artists_deleted_from_old_list = [x for x in old_list if x not in new_list]  # czyli wszystko co było usunięte z nowym
+
+print('What is new: ', new_added_artists_list)
+print('What has been deleted: ', artists_deleted_from_old_list)
+
+""" In case of any failure save new_added_artists_list and artists_deleted_from_old_list to json file """
+
+last_added_json_format = {"artists": new_added_artists_list}
+last_deleted_json_format = {"artists": artists_deleted_from_old_list}
+
+export_json_to_file(last_added_json_format, "last_added_artists.json")
+export_json_to_file(last_deleted_json_format, "last_deleted_artists.json")
 
 
-# artist_discography = get_artists_discography(sp, artist_id='6vEgaRuQU3vD4ae9SrL7tR')
+#TODO jak skoncze kombinowac to trzeba zmienic nazwe pliku na old zeby sie nadpisywalo
+
+export_json_to_file(json_to_export, "new_list_of_artists.json")
+
+""" Add all new songs to playlist"""
+for artist in new_added_artists_list:
+    sp.playlist_add_items(playlist_id=target_playlist_id, items=artist_tracks_to_add(sp, artist["artist_id"]))
 
 
-###### sp.playlist_add_items(playlist_id='6UDrcXzV1goOZldp8nOZum', items=to_add)
-artists_id_list = ['6vEgaRuQU3vD4ae9SrL7tR', '2BxIP27i38uM4Ds5Pbdk3h']
-
-# for artist_id in artists_id_list:
-#     # add_tracks_to_playlist(sp, tracks_id_list=artist_tracks_to_add(sp, artist_id), playlist_id=target_playlist_id)
-#     sp.playlist_add_items(playlist_id=target_playlist_id, items=artist_tracks_to_add(sp, artist_id))
+# TODO maksymalnie 1 request może dodać 100 utworów więc trzeba podzielić to jeszcze
 
 
 
-# print(sp.current_user())  # print userinfo
-# sp.user_playlist_create(username, 'TestSpotispy', public=True, collaborative=False, description="Test playlist for SpotiSpy")
-# artist_tracks = []
-# for album in artist_albums['items']:
-#     album_tracks = sp.album_tracks(album['id'], limit=50)
-#     artist_tracks.append(album_tracks)
-#     print(album['name'])
-#     print(len(artist_tracks))
-#print('KONIEC:', artist_tracks)
 
-# for track in artist_tracks:
-#     print(track['items'][0]['name'])
+
+# #
+# # # Serializing json
+# # json_object = json.dumps(json_to_export, indent=4)
+# #
+# # # Writing to sample.json
+# # with open("old_list_of_artists.json", "w") as outfile:
+# #     outfile.write(json_object)
+#
+# # artist_database = {"artists": []}
+# # artist_data = {}
+# # for artist in followed_artist_list[:3]:
+# #     artist_data["artist_name"] = artist['name']
+# #     artist_data["artist_id"] = artist['id']
+# #     artist_database["artists"].append(artist_data)
+# #     artist_data = {}
+# # print(artist_database)
+#
+# # { "artists": [
+# #     {"artist_name": "Chef Lay", "artist_id": "6xQoqRtTEYNZNF5gUMG3iu", "artist_index": 590},
+# #     {"artist_name": "CHOPPA TEE", "artist_id": "12iGnI7m6kxA8LpEQ1xdiJ", "artist_index": 91},
+# #     {"artist_name": "Ash Bash Tha Rapper", "artist_id": "4GHSsO2bndtYIfy8js9hUN", "artist_index": 370}
+# #     ]
+# # }
+# # artist_albums = get_artist_albums(sp, artist_id='0hCNtLu0JehylgoiP8L4Gh')
+#
+#
+# # album_tracks = get_album_tracks(sp,'4Rh57STD18rbjXbBrx2X65')
+#
+#
+# # artist_discography = get_artists_discography(sp, artist_id='6vEgaRuQU3vD4ae9SrL7tR')
+#
+#
+# ###### sp.playlist_add_items(playlist_id='6UDrcXzV1goOZldp8nOZum', items=to_add)
+
+#
+#
+#
+# # print(sp.current_user())  # print userinfo
+# # sp.user_playlist_create(username, 'TestSpotispy', public=True, collaborative=False, description="Test playlist for SpotiSpy")
