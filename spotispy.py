@@ -5,7 +5,7 @@ import json
 from jsondiff import diff
 
 
-def get_followed_artist_list(sp, limit=50) -> dict:
+def get_followed_artist_list(sp, limit=50) -> list[dict]:
     artist_list = []
     results = sp.current_user_followed_artists(limit=limit)['artists']
     artist_list.extend(results['items'])
@@ -18,7 +18,7 @@ def get_followed_artist_list(sp, limit=50) -> dict:
     return artist_list
 
 
-def get_artist_albums(sp, artist_id, album_type=('album', 'single'), limit=50) -> dict:
+def get_artist_albums(sp, artist_id, album_type=('album', 'single'), limit=50) -> list[dict]:
     albums = []
     for type in album_type:
         results = sp.artist_albums(artist_id, album_type=type, limit=limit)
@@ -33,7 +33,7 @@ def get_artist_albums(sp, artist_id, album_type=('album', 'single'), limit=50) -
     return albums
 
 
-def get_album_tracks(sp, album_id, limit=50) -> dict:
+def get_album_tracks(sp, album_id, limit=50) -> list[dict]:
     tracks = []
     results = sp.album_tracks(album_id=album_id, limit=limit)
     #print(results['total'])
@@ -47,7 +47,7 @@ def get_album_tracks(sp, album_id, limit=50) -> dict:
     return tracks
 
 
-def get_artists_discography(sp, artist_id) -> dict:
+def get_artists_discography(sp, artist_id) -> list[dict]:
     artists_tracks = []
     artist_albums = get_artist_albums(sp, artist_id=artist_id)
     for album in artist_albums:
@@ -200,18 +200,18 @@ sp = spotipy.Spotify(auth_manager=auth_manager)
 
 
 followed_artist_list = get_followed_artist_list(sp)
-#print(followed_artist_list)
+# for artist in followed_artist_list:
+#     print(artist['name'], artist['id'])
+
 """ Load old list of artists"""
 old_list = read_data_from_json('old_list_of_artists.json', 'artists')
 
 """ Generate new list of followed artists and transform it into json format"""
-json_to_export = export_spotify_dict_to_json_format(followed_artist_list, "artists",
-                                                    [("artist_name", "name"), ("artist_id", "id")])
-new_list = json_to_export["artists"]
+new_dict_of_artists_json_to_export = export_spotify_dict_to_json_format(followed_artist_list, "artists",
+                                                                        [("artist_name", "name"), ("artist_id", "id")])
+new_list = new_dict_of_artists_json_to_export["artists"]
 
-#new_list = read_data_from_json('new_list_of_artists.json', 'artists')
-
-
+""" Generate difference between new and old artists lists """
 new_added_artists_list = [x for x in new_list if x not in old_list]  # czyli wszystko co się pojawiło nowe
 artists_deleted_from_old_list = [x for x in old_list if x not in new_list]  # czyli wszystko co było usunięte z nowym
 
@@ -219,65 +219,24 @@ print('What is new: ', new_added_artists_list)
 print('What has been deleted: ', artists_deleted_from_old_list)
 
 """ In case of any failure save new_added_artists_list and artists_deleted_from_old_list to json file """
-
 last_added_json_format = {"artists": new_added_artists_list}
 last_deleted_json_format = {"artists": artists_deleted_from_old_list}
 
 export_json_to_file(last_added_json_format, "last_added_artists.json")
 export_json_to_file(last_deleted_json_format, "last_deleted_artists.json")
 
-
+print("New artists count: ", len(new_added_artists_list))
 #TODO jak skoncze kombinowac to trzeba zmienic nazwe pliku na old zeby sie nadpisywalo
 
-export_json_to_file(json_to_export, "new_list_of_artists.json")
+""" Overwrite old list of artists with new_added_artists_list """
+export_json_to_file(new_dict_of_artists_json_to_export, "old_list_of_artists.json")
 
-""" Add all new songs to playlist"""
+""" Add all new songs to playlist artist by artist from new_added_artists_list """
 for artist in new_added_artists_list:
-    sp.playlist_add_items(playlist_id=target_playlist_id, items=artist_tracks_to_add(sp, artist["artist_id"]))
+    items = artist_tracks_to_add(sp, artist["artist_id"])
+    while items:
+        sp.playlist_add_items(playlist_id=target_playlist_id, items=items[:100], )
+        items = items[100:]
 
-
-# TODO maksymalnie 1 request może dodać 100 utworów więc trzeba podzielić to jeszcze
-
-
-
-
-
-# #
-# # # Serializing json
-# # json_object = json.dumps(json_to_export, indent=4)
-# #
-# # # Writing to sample.json
-# # with open("old_list_of_artists.json", "w") as outfile:
-# #     outfile.write(json_object)
-#
-# # artist_database = {"artists": []}
-# # artist_data = {}
-# # for artist in followed_artist_list[:3]:
-# #     artist_data["artist_name"] = artist['name']
-# #     artist_data["artist_id"] = artist['id']
-# #     artist_database["artists"].append(artist_data)
-# #     artist_data = {}
-# # print(artist_database)
-#
-# # { "artists": [
-# #     {"artist_name": "Chef Lay", "artist_id": "6xQoqRtTEYNZNF5gUMG3iu", "artist_index": 590},
-# #     {"artist_name": "CHOPPA TEE", "artist_id": "12iGnI7m6kxA8LpEQ1xdiJ", "artist_index": 91},
-# #     {"artist_name": "Ash Bash Tha Rapper", "artist_id": "4GHSsO2bndtYIfy8js9hUN", "artist_index": 370}
-# #     ]
-# # }
-# # artist_albums = get_artist_albums(sp, artist_id='0hCNtLu0JehylgoiP8L4Gh')
-#
-#
-# # album_tracks = get_album_tracks(sp,'4Rh57STD18rbjXbBrx2X65')
-#
-#
-# # artist_discography = get_artists_discography(sp, artist_id='6vEgaRuQU3vD4ae9SrL7tR')
-#
-#
-# ###### sp.playlist_add_items(playlist_id='6UDrcXzV1goOZldp8nOZum', items=to_add)
-
-#
-#
-#
 # # print(sp.current_user())  # print userinfo
 # # sp.user_playlist_create(username, 'TestSpotispy', public=True, collaborative=False, description="Test playlist for SpotiSpy")
