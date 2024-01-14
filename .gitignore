@@ -1,4 +1,4 @@
 # credentials file
-.config
-.cache*
-.idea/
+*.config
+*.cache*
+.idea
