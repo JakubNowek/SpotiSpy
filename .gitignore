@@ -2,3 +2,5 @@
 *.config
 *.cache*
 .idea
+jsonowy.json
+new_list_of_artists.json
